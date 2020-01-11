@@ -1,2 +1,2 @@
 # LB-RelativisticFluid-CUDA
-![](Temperature.gif & s=50)
+![](Temperature.gif){:height="50%" width="50%"}
