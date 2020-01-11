@@ -6,15 +6,13 @@
 #include<device_launch_parameters.h>
 using namespace std;
 
-
-
 #define M 20
 #define N 10
 #define W 10
 
 #define Q 19
 
-#define BLOCKSIZE_x 8
+#define BLOCKSIZE_x 5
 #define BLOCKSIZE_y 5
 #define BLOCKSIZE_z 5
 
@@ -22,8 +20,6 @@ using namespace std;
 const int Mx=(M + BLOCKSIZE_x -1)/BLOCKSIZE_x;
 const int My=(N + BLOCKSIZE_y -1)/BLOCKSIZE_y;
 const int Mz=(W + BLOCKSIZE_z -1)/BLOCKSIZE_z;
-
-
 
 const int cl = 1;
 const int C = 1;
@@ -1069,11 +1065,11 @@ void LatticeBoltzmann::Start(float Ux0,float Uy0,float Uz0,float rho0, float rho
         h_f17new[iz][iy][ix] =0;    h_g17new[iz][iy][ix] = 0;
         h_f18new[iz][iy][ix] =0;    h_g18new[iz][iy][ix] = 0;
 	//---------------------------
-        if(ix < 50){
+        if(ix < int(M*0.5)){
           P = P0;
           n = n0;
           rho = rho0;
-        }else if(ix >= 50){
+        }else if(ix >= int(M*0.5)){
           P = P1;
           n = n1;
           rho = rho1;
@@ -2869,14 +2865,14 @@ void LatticeBoltzmann::Print(const char * NombreArchivo){
   for(int ix=0;ix<M;ix++){
     for(int iy=0;iy<N;iy++)
       for(int iz=0;iz<W;iz++){
-	Ux0=h_Ux(ix,iy,iz);
-	Uy0=h_Uy(ix,iy,iz);
-	Uz0=h_Uz(ix,iy,iz);
-        //MiArchivo<<ix<<" "<< iy << " " << iz << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0)<<" "<<h_P(ix,iy,iz)/2.495e-7<<endl;
-        if(iz == 50){
-        X_Y<<ix<<" "<< iy << " " << h_P(ix,iy,iz)/2.495e-7 << endl;
-        }else if(iy == 50){
-        X_Z<<ix<<" "<< iz << " " << h_P(ix,iy,iz)/2.495e-7 << endl;
+        Ux0=h_Ux(ix,iy,iz);
+        Uy0=h_Uy(ix,iy,iz);
+        Uz0=h_Uz(ix,iy,iz);
+        MiArchivo<<ix<<" "<< iy << " " << iz << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0)<<" "<<h_P(ix,iy,iz)/2.495e-7<<endl;
+        if(iz == int(W*0.3)){
+          X_Y<<ix<<" "<< iy << " " << h_P(ix,iy,iz)/2.495e-7 << endl;
+        }else if(iy == int(N*0.3)){
+          X_Z<<ix<<" "<< iz << " " << h_P(ix,iy,iz)/2.495e-7 << endl;
         }
 	}
     MiArchivo<<endl;
@@ -2910,14 +2906,14 @@ int main()
   float rho0 = 3*n0*T;
   float rho1 = 3*n1*T;
 
-  int t,tmax = 1350;
+  int t,tmax = 5000;
 
   Relativistic_Ang.Start(Ux0,Uy0,Uz0,rho0,rho1,n0,n1,P0,P1);
   
   for(t=0;t<tmax;t++){
     Relativistic_Ang.Collision();
     Relativistic_Ang.Advection();
-    }
-    Relativistic_Ang.Print("Relat_Aire_.dat");   
+  }
+  Relativistic_Ang.Print("data.dat");   
   return 0;
 }
