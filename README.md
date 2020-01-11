@@ -1,2 +1,2 @@
 # LB-RelativisticFluid-CUDA
-![](Temperature.gif)
+![](Temperature.gif&s=50)
