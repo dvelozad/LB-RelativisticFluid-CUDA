@@ -24,6 +24,8 @@ const int cl = 1;
 const int C = 1;
 const float tau = 1.505;
 
+const int h_R = 10;
+
 __constant__ float d_w[Q];
 __constant__ int d_Vx[Q];
 __constant__ int d_Vy[Q];
@@ -37,7 +39,7 @@ __constant__ int d_cm_x = 100;
 __constant__ int d_cm_y = 50;
 __constant__ int d_cm_z = 50;
 
-__constant__ int d_R = 0;
+__constant__ int d_R = h_R;
 
 /******************/
 /* iDivUp FUNCTION */
@@ -772,22 +774,34 @@ __global__ void d_collition(cudaPitchedPtr devpitchf0,cudaPitchedPtr devpitchf0n
   //--------------------------------------------------
   //printf("|%f",f0[390]);
   float Ux0,Uy0,Uz0,n0,rho0,P0,T0;
-  //float n_0,T_0;
+  float r2_pos_2d;
+  r2_pos_2d = (iy-int(0.5*N))*(iy-int(0.5*N)) + (iz-int(0.5*W))*(iz-int(0.5*W));
 
   //Obstacle
-  if( ((ix - d_cm_x)*(ix - d_cm_x) + (iy - d_cm_y)*(iy - d_cm_y) + (iz - d_cm_z)*(iz - d_cm_z)) < d_R*d_R){
+    //Tube
+  if(r2_pos_2d > d_R*d_R && ix < int(M*0.2)){
     Ux0 = 0; 
     Uy0 = 0;
     Uz0 = 0;
   
     T0 = 0.0314;
   
-    P0 = 0;
+    P0 = 2.495e-7;
     n0 = P0/T0;
     rho0 = 3*n0*T0;
 
+  }//Source
+    else if(r2_pos_2d < d_R*d_R && ix < int(M*0.1)){
+      Ux0 = 0.45; 
+      Uy0 = 0.;
+      Uz0 = 0.;
+    
+      T0 = 2.*0.0314;
+    
+      P0 = 2*2.495e-7;
+      n0 = 10*P0/T0;
+      rho0 = 3*n0*T0;
   }else{
-
   Ux0 = d_Ux(g0[ix],g1[ix],g2[ix],g3[ix],g4[ix],g5[ix],g6[ix],g7[ix],g8[ix],g9[ix],g10[ix],g11[ix],g12[ix],g13[ix],g14[ix],g15[ix],g16[ix],g17[ix],g18[ix]);
   Uy0 = d_Uy(g0[ix],g1[ix],g2[ix],g3[ix],g4[ix],g5[ix],g6[ix],g7[ix],g8[ix],g9[ix],g10[ix],g11[ix],g12[ix],g13[ix],g14[ix],g15[ix],g16[ix],g17[ix],g18[ix]);
   Uz0 = d_Uz(g0[ix],g1[ix],g2[ix],g3[ix],g4[ix],g5[ix],g6[ix],g7[ix],g8[ix],g9[ix],g10[ix],g11[ix],g12[ix],g13[ix],g14[ix],g15[ix],g16[ix],g17[ix],g18[ix]);
@@ -949,7 +963,7 @@ public:
   float h_rho(int ix,int iy,int iz);
   float h_feq(int i,float n0,float Ux0,float Uy0,float Uz0);
   float h_geq(int i,float rho0,float P0,float Ux0,float Uy0,float Uz0);
-  void Print(const char * NombreArchivo);
+  void Print(const char * NombreArchivo,float P0, float n0,int t);
 };
 
 LatticeBoltzmann::LatticeBoltzmann(void){
@@ -1068,16 +1082,9 @@ void LatticeBoltzmann::Start(float Ux0,float Uy0,float Uz0,float rho0, float rho
         h_f17new[iz][iy][ix] =0;    h_g17new[iz][iy][ix] = 0;
         h_f18new[iz][iy][ix] =0;    h_g18new[iz][iy][ix] = 0;
 	//---------------------------
-        if(ix < int(0.5*M)){
-          P = P0;
-          n = n0;
-          rho = rho0;
-        }else if(ix >= int(0.5*M)){
-          P = P1;
-          n = n1;
-          rho = rho1;
-        }
-
+        P = P0;
+        n = n0;
+        rho = rho0;
 
         h_f0[iz][iy][ix] = h_feq(0,n,Ux0,Uy0,Uz0);    h_g0[iz][iy][ix] = h_geq(0,rho,P,Ux0,Uy0,Uz0);
         h_f1[iz][iy][ix] = h_feq(1,n,Ux0,Uy0,Uz0);    h_g1[iz][iy][ix] = h_geq(1,rho,P,Ux0,Uy0,Uz0);
@@ -2838,13 +2845,16 @@ float LatticeBoltzmann::h_geq(int i,float rho0,float P0,float Ux0,float Uy0,floa
     return 3.*h_w[i]*P0*y2*( 1./(y2*cl*cl) + 4.*UdotV/(cl*cl) + 6.*(UdotV*UdotV)/(cl*cl*cl*cl) - 2.*(U2/(cl*cl)) );
   }
 }
-void LatticeBoltzmann::Print(const char * NombreArchivo){
+
+void LatticeBoltzmann::Print(const char * data_name, float P0, float n0, int t){
   float U2,Ux0,Uy0,Uz0;
-  //Imprimir en un archivo
-  ofstream MiArchivo(NombreArchivo);
-  ofstream X_Y("X_Y_cut.dat");
-  ofstream X_Z("X_Z_cut.dat");
-  ofstream central("central_cut.dat");
+
+  string _t = to_string(t);
+
+  ofstream data(data_name);
+  ofstream X_Y("data/X_Y_"+_t+".dat");
+  ofstream X_Z("data/X_Z_"+_t+".dat");
+  ofstream central("data/central_cut.dat");
   Show();
   for(int ix=0;ix<M;ix++){
     for(int iy=0;iy<N;iy++)
@@ -2853,35 +2863,34 @@ void LatticeBoltzmann::Print(const char * NombreArchivo){
         Uy0=h_Uy(ix,iy,iz);
         Uz0=h_Uz(ix,iy,iz);
         U2 = Ux0*Ux0 + Uy0*Uy0 + Uz0*Uz0;
-        MiArchivo<<ix<<" "<< iy << " " << iz << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0)<<" "<<h_P(ix,iy,iz)/2.495e-7<<endl;
+        data << ix << " " << iy << " " << iz << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0)/n0 << " " << h_P(ix,iy,iz)/P0 << endl;
         if(iz == int(W*0.5)){
-          X_Y<<ix<<" "<< iy << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0) << " "  << h_P(ix,iy,iz)/2.495e-7 << " " << sqrt(U2) << endl;
+          X_Y<<ix<<" "<< iy << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0)/n0 << " "  << h_P(ix,iy,iz)/P0 << " " << sqrt(U2) << endl;
           if(iy == int(N*0.5)){
-            central<<ix<<" "<< h_P(ix,iy,iz)/2.495e-7 <<" " << sqrt(U2) << endl;
+            central<<ix<<" "<< h_P(ix,iy,iz)/P0 <<" " << sqrt(U2) << endl;
           }
         }else if(iy == int(N*0.5)){
-          X_Z<<ix<<" "<< iz << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0) << " " << h_P(ix,iy,iz)/2.495e-7 << " " << sqrt(U2) << endl;
+          X_Z<<ix<<" "<< iz << " " << h_n(ix,iy,iz,Ux0,Uy0,Uz0)/n0 << " " << h_P(ix,iy,iz)/P0 << " " << sqrt(U2) << endl;
         }
 	}
-    MiArchivo<<endl;
+    data<<endl;
     X_Y<<endl;
     X_Z<<endl;
   }
-  MiArchivo.close();
+  data.close();
   X_Y.close();
   X_Z.close();
 }
 //----------------------------------------------------------------------------------------
 int main(){ 
   
-  LatticeBoltzmann Relativistic_Ang;
+  LatticeBoltzmann Jet;
 
   float Ux0 = 0.0;
   float Uy0 = 0.0;
   float Uz0 = 0.0;
   
   float T = 0.0314;
-  //float dg = 16;
   
   float P0 = 2.495e-7;
   float P1 = 1.023e-7;
@@ -2892,14 +2901,17 @@ int main(){
   float rho0 = 3*n0*T;
   float rho1 = 3*n1*T;
 
-  int t,tmax = 1;
+  int t,tmax = 1000;
 
-  Relativistic_Ang.Start(Ux0,Uy0,Uz0,rho0,rho1,n0,n1,P0,P1);
+  Jet.Start(Ux0,Uy0,Uz0,rho0,rho1,n0,n1,P0,P1);
   
   for(t=0;t<tmax;t++){
-    Relativistic_Ang.Collision();
-    Relativistic_Ang.Advection();
+    Jet.Collision();
+    Jet.Advection();
+    if(t%2 == 0){
+      Jet.Print("data/data.dat",P0,n0,t); 
+    }
   }
-  Relativistic_Ang.Print("data.dat");   
+    
   return 0;
 }
