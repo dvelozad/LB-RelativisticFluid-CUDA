@@ -1,8 +1,8 @@
 # LB-RelativisticFluid-CUDA
-<p align="center">
+<p align="left">
   <img src="Temperature.gif" height="50%" width="50%">
 </p>
 
-<p align="center">
+<p align="right">
   <img src="jet.gif" height="50%" width="50%">
 </p>
